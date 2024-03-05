@@ -96,7 +96,6 @@ class Board():
         self.squares = np.zeros((ROWS, COLS))
         self.empty_sqrs_list = []  # list for empty sqrs
         self.marked_sqrs_count = 0  # count of marked sqrs
-        print(self.squares)
 
     def mark_square(self, row, col, player):    
         self.squares[row][col] = player
@@ -158,6 +157,9 @@ class Game():
         
 
     def show_lines(self):
+        # fill bg_color
+        screen.fill(BG_COLOR)
+
         # vertical lines
         pygame.draw.line(screen, LINE_COLOR, (CELL_SIZE, 0), (CELL_SIZE, HEIGHT), LINE_WIDTH)
         pygame.draw.line(screen, LINE_COLOR, (2*CELL_SIZE, 0), (2*CELL_SIZE, HEIGHT), LINE_WIDTH)
@@ -168,6 +170,15 @@ class Game():
 
     def change_turn(self):
         self.player = 2 if self.player == 1 else 1
+
+    def make_move(self, row, col):
+        self.board.mark_square(row, col, self.player)    # mark the position in array using board object
+        self.draw_fig(row, col)     # draw the fig on board gui         
+        self.change_turn()
+
+    def change_game_mode(self):
+        self.game_mode = 'ai' if self.game_mode == 'pvp' else 'pvp'
+
 
     def draw_fig(self, row, col):
         if self.player == 1:
@@ -186,8 +197,12 @@ class Game():
             center = (col * CELL_SIZE + CELL_SIZE//2, row * CELL_SIZE + CELL_SIZE//2)
             pygame.draw.circle(screen, CIRC_COLOR, center, RADIUS, CIRC_WIDTH)  # STORE IN CONCSTANT
 
+    def reset(self):
+        self.__init__() #just call initialiser function to reset all values
+        
 
-
+    def game_over(self):
+        return self.board.final_state() != 0 or self.board.isfull()     # if either 1 or 2 has won or board is full game over
 
 # main function
 def main():
@@ -211,21 +226,41 @@ def main():
                 row = int(mouse_y // CELL_SIZE)  # get the row
                 col = int(mouse_x // CELL_SIZE)  # get the col
                  
-                if board.empty_square(row, col):
-                    board.mark_square(row, col, game.player)    # mark the position in array 
-                    game.draw_fig(row, col)     # draw the fig on board gui         
-                    game.change_turn()
+                if board.empty_square(row, col) and game.running:
+                    game.make_move(row, col)
+
+                    if game.game_over():
+                        game.running = False
+            
+            if event.type == pygame.KEYDOWN:
+                # g key changes game mode
+                if event.key == pygame.K_g:
+                    game.change_game_mode()
+                
+                # 0 key changes to random move mode
+                if event.key == pygame.K_0:
+                    game.ai.level = 0
+                
+                # 1 key changes to engine move mode
+                if event.key == pygame.K_1:
+                    game.ai.level = 1
+
+                # r key resets game
+                if event.key == pygame.K_r:
+                    game.reset()
+                    board = game.board
 
 
-        if game.game_mode == 'ai' and game.player == ai.player:
+
+        if game.game_mode == 'ai' and game.player == ai.player and game.running:
             # update screen
             pygame.display.update()
 
             row, col = ai.eval(board) # return random position
-            board.mark_square(row, col, 2)   # computer fills the position with 2 in array
-            game.draw_fig(row,col)         # draw on the screen
-            game.change_turn()
-
+            game.make_move(row, col)
+            
+            if game.game_over():
+                game.running = False
 
         pygame.display.update()
 
